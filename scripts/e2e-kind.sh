@@ -14,7 +14,7 @@ annotation() {
   local key="$2"
   kubectl get externalsecret "$name" \
     --namespace "$TEST_NAMESPACE" \
-    --output "go-template={{ index .metadata.annotations \"$key\" }}"
+    --output "go-template={{ with index .metadata.annotations \"$key\" }}{{ . }}{{ end }}"
 }
 
 wait_for_annotation() {
@@ -142,4 +142,3 @@ if [[ -n "$cooldown_reason" ]]; then
 fi
 
 echo "E2E test passed"
-
