@@ -1,0 +1,72 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/hoseinalirezaee/es-refresh-healer
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+controller:
+  scanInterval: 60s
+  defaultRefreshInterval: 1h
+  staleMultiplier: 3
+  graceSeconds: 30
+  cooldownSeconds: 600
+  maxPatchesPerMinute: 20
+  dryRun: false
+  watchNamespaces: []
+  denyNamespaces: []
+  logLevel: info
+  metricsAddr: :8080
+  leaderElect: true
+  externalSecretVersion: v1beta1
+  emitEvents: false
+  allowZeroRefreshInterval: false
+  maxAllowedLagSeconds: 0
+
+metrics:
+  service:
+    enabled: true
+    port: 8080
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+

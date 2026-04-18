@@ -1,0 +1,6 @@
+.git
+.tools
+bin
+dist
+coverage.out
+
