@@ -46,7 +46,7 @@ func Parse(args []string) (Config, error) {
 		LeaderElect:              boolEnv("LEADER_ELECT", true),
 		LeaderElectionNamespace:  stringEnv("LEADER_ELECTION_NAMESPACE", stringEnv("POD_NAMESPACE", "default")),
 		Kubeconfig:               stringEnv("KUBECONFIG", ""),
-		ExternalSecretVersion:    stringEnv("EXTERNALSECRET_VERSION", "v1beta1"),
+		ExternalSecretVersion:    stringEnv("EXTERNALSECRET_VERSION", "v1"),
 		EmitEvents:               boolEnv("EMIT_EVENTS", false),
 		AllowZeroRefreshInterval: boolEnv("ALLOW_ZERO_REFRESH_INTERVAL", false),
 		MaxAllowedLag:            secondsEnv("MAX_ALLOWED_LAG_SECONDS", 0),

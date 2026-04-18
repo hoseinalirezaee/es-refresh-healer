@@ -118,7 +118,7 @@ helm upgrade es-refresh-healer ./charts/es-refresh-healer \
 | `controller.logLevel` | `--log-level` | `info` |
 | `controller.metricsAddr` | `--metrics-addr` | `:8080` |
 | `controller.leaderElect` | `--leader-elect` | `true` |
-| `controller.externalSecretVersion` | `--externalsecret-version` | `v1beta1` |
+| `controller.externalSecretVersion` | `--externalsecret-version` | `v1` |
 | `controller.emitEvents` | `--emit-events` | `false` |
 | `controller.allowZeroRefreshInterval` | `--allow-zero-refresh-interval` | `false` |
 | `controller.maxAllowedLagSeconds` | `--max-allowed-lag-seconds` | `0` |
@@ -158,7 +158,7 @@ Run the kind-based E2E test against the current Kubernetes context:
 make e2e-kind
 ```
 
-GitHub Actions runs the E2E workflow against the latest four kind-backed Kubernetes cluster versions: `v1.35.1`, `v1.34.3`, `v1.33.4`, and `v1.32.8`.
+GitHub Actions runs the E2E workflow against the latest four kind-backed Kubernetes cluster versions: `v1.35.1`, `v1.34.3`, `v1.33.4`, and `v1.32.8`. The test applies the real External Secrets Operator CRD bundle from `external-secrets/external-secrets` and creates `external-secrets.io/v1` `ExternalSecret` resources.
 
 ## Operational Runbook
 
@@ -171,7 +171,7 @@ GitHub Actions runs the E2E workflow against the latest four kind-backed Kuberne
 
 ## Troubleshooting
 
-If no resources are seen, confirm the ESO API version. The default is `external-secrets.io/v1beta1`; set `controller.externalSecretVersion` if your cluster uses another served version.
+If no resources are seen, confirm the ESO API version. The default is `external-secrets.io/v1`; set `controller.externalSecretVersion` if your cluster uses another served version such as legacy `v1beta1`.
 
 If stale resources are detected but not patched, check dry-run mode, cooldown, and `maxPatchesPerMinute`.
 

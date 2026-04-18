@@ -96,7 +96,7 @@ func testController(t *testing.T, dryRun bool, objects ...runtime.Object) (*Cont
 		LogLevel:               "debug",
 		MetricsAddr:            ":0",
 		LeaderElect:            false,
-		ExternalSecretVersion:  "v1beta1",
+		ExternalSecretVersion:  "v1",
 	}, dynamicClient, kubefake.NewSimpleClientset(), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatalf("new controller: %v", err)
@@ -107,7 +107,7 @@ func testController(t *testing.T, dryRun bool, objects ...runtime.Object) (*Cont
 
 func testExternalSecret(namespace, name string, refreshTime time.Time, annotations map[string]string) *unstructured.Unstructured {
 	obj := &unstructured.Unstructured{Object: map[string]any{
-		"apiVersion": "external-secrets.io/v1beta1",
+		"apiVersion": "external-secrets.io/v1",
 		"kind":       "ExternalSecret",
 		"metadata": map[string]any{
 			"name":              name,
@@ -130,7 +130,7 @@ func getExternalSecret(t *testing.T, client *dynamicfake.FakeDynamicClient, name
 
 	gvr := schema.GroupVersionResource{
 		Group:    "external-secrets.io",
-		Version:  "v1beta1",
+		Version:  "v1",
 		Resource: "externalsecrets",
 	}
 	got, err := client.Resource(gvr).Namespace(namespace).Get(context.Background(), name, metav1.GetOptions{})

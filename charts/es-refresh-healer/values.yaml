@@ -27,7 +27,7 @@ controller:
   logLevel: info
   metricsAddr: :8080
   leaderElect: true
-  externalSecretVersion: v1beta1
+  externalSecretVersion: v1
   emitEvents: false
   allowZeroRefreshInterval: false
   maxAllowedLagSeconds: 0
@@ -69,4 +69,3 @@ resources:
 nodeSelector: {}
 tolerations: []
 affinity: {}
-

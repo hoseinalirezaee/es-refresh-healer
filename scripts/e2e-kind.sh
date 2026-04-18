@@ -5,6 +5,8 @@ CLUSTER_NAME="${CLUSTER_NAME:-es-refresh-healer}"
 IMAGE_REPOSITORY="${IMAGE_REPOSITORY:-es-refresh-healer}"
 IMAGE_TAG="${IMAGE_TAG:-e2e}"
 TEST_NAMESPACE="${TEST_NAMESPACE:-es-refresh-healer-e2e}"
+EXTERNALSECRET_API_VERSION="${EXTERNALSECRET_API_VERSION:-v1}"
+ESO_CRD_BUNDLE_URL="${ESO_CRD_BUNDLE_URL:-https://raw.githubusercontent.com/external-secrets/external-secrets/helm-chart-2.3.0/deploy/crds/bundle.yaml}"
 
 LAST_KICK='healer.external-secrets.io/last-kick'
 LAST_REASON='healer.external-secrets.io/last-reason'
@@ -35,9 +37,12 @@ wait_for_annotation() {
   return 1
 }
 
-echo "Installing ExternalSecret CRD"
-kubectl apply --filename test/e2e/externalsecret-crd.yaml
+echo "Installing real External Secrets Operator CRDs"
+kubectl apply --server-side --force-conflicts --filename "$ESO_CRD_BUNDLE_URL"
 kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=60s
+kubectl get crd externalsecrets.external-secrets.io \
+  --output "jsonpath={.spec.versions[?(@.name=='${EXTERNALSECRET_API_VERSION}')].served}" \
+  | grep -qx true
 
 echo "Creating E2E fixtures"
 kubectl create namespace "$TEST_NAMESPACE" --dry-run=client --output yaml | kubectl apply --filename -
@@ -46,7 +51,7 @@ now_rfc3339="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 now_unix="$(date -u +%s)"
 
 cat <<EOF | kubectl apply --filename -
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/${EXTERNALSECRET_API_VERSION}
 kind: ExternalSecret
 metadata:
   name: stale-secret
@@ -54,7 +59,7 @@ metadata:
 spec:
   refreshInterval: 1s
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/${EXTERNALSECRET_API_VERSION}
 kind: ExternalSecret
 metadata:
   name: fresh-secret
@@ -62,7 +67,7 @@ metadata:
 spec:
   refreshInterval: 1h
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/${EXTERNALSECRET_API_VERSION}
 kind: ExternalSecret
 metadata:
   name: cooldown-secret
@@ -105,6 +110,7 @@ helm upgrade --install es-refresh-healer ./charts/es-refresh-healer \
   --set image.tag="$IMAGE_TAG" \
   --set image.pullPolicy=Never \
   --set controller.leaderElect=false \
+  --set controller.externalSecretVersion="$EXTERNALSECRET_API_VERSION" \
   --set controller.scanInterval=2s \
   --set controller.defaultRefreshInterval=10s \
   --set controller.staleMultiplier=1 \
