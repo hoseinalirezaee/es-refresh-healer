@@ -25,7 +25,6 @@ type Config struct {
 	LeaderElectionNamespace  string
 	Kubeconfig               string
 	ExternalSecretVersion    string
-	EmitEvents               bool
 	AllowZeroRefreshInterval bool
 	MaxAllowedLag            time.Duration
 }
@@ -47,7 +46,6 @@ func Parse(args []string) (Config, error) {
 		LeaderElectionNamespace:  stringEnv("LEADER_ELECTION_NAMESPACE", stringEnv("POD_NAMESPACE", "default")),
 		Kubeconfig:               stringEnv("KUBECONFIG", ""),
 		ExternalSecretVersion:    stringEnv("EXTERNALSECRET_VERSION", "v1"),
-		EmitEvents:               boolEnv("EMIT_EVENTS", false),
 		AllowZeroRefreshInterval: boolEnv("ALLOW_ZERO_REFRESH_INTERVAL", false),
 		MaxAllowedLag:            secondsEnv("MAX_ALLOWED_LAG_SECONDS", 0),
 	}
@@ -74,7 +72,6 @@ func Parse(args []string) (Config, error) {
 	fs.StringVar(&cfg.LeaderElectionNamespace, "leader-election-namespace", cfg.LeaderElectionNamespace, "namespace for the leader election Lease")
 	fs.StringVar(&cfg.Kubeconfig, "kubeconfig", cfg.Kubeconfig, "path to kubeconfig for out-of-cluster execution")
 	fs.StringVar(&cfg.ExternalSecretVersion, "externalsecret-version", cfg.ExternalSecretVersion, "ExternalSecret API version")
-	fs.BoolVar(&cfg.EmitEvents, "emit-events", cfg.EmitEvents, "create Kubernetes Events for detections and patches")
 	fs.BoolVar(&cfg.AllowZeroRefreshInterval, "allow-zero-refresh-interval", cfg.AllowZeroRefreshInterval, "evaluate resources with non-positive refresh intervals using the fallback interval")
 	fs.Var(durationFlag{target: &cfg.MaxAllowedLag}, "max-allowed-lag-seconds", "hard maximum allowed lag; accepts Go durations or a bare second value; 0 disables")
 

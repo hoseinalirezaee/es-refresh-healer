@@ -36,7 +36,6 @@ Safety controls:
 - Dry-run mode for observation without writes.
 - Optional namespace allowlist and denylist.
 - Leader election by default.
-- Optional Kubernetes Events.
 - Prometheus metrics and JSON structured logs.
 
 ## Metrics
@@ -119,7 +118,6 @@ helm upgrade es-refresh-healer ./charts/es-refresh-healer \
 | `controller.metricsAddr` | `--metrics-addr` | `:8080` |
 | `controller.leaderElect` | `--leader-elect` | `true` |
 | `controller.externalSecretVersion` | `--externalsecret-version` | `v1` |
-| `controller.emitEvents` | `--emit-events` | `false` |
 | `controller.allowZeroRefreshInterval` | `--allow-zero-refresh-interval` | `false` |
 | `controller.maxAllowedLagSeconds` | `--max-allowed-lag-seconds` | `0` |
 

@@ -28,7 +28,6 @@ controller:
   metricsAddr: :8080
   leaderElect: true
   externalSecretVersion: v1
-  emitEvents: false
   allowZeroRefreshInterval: false
   maxAllowedLagSeconds: 0
 

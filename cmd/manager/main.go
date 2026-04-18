@@ -57,7 +57,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctrl, err := controller.New(cfg, dynamicClient, kubeClient, log)
+	ctrl, err := controller.New(cfg, dynamicClient, log)
 	if err != nil {
 		log.Error("failed to create controller", "error", err)
 		os.Exit(1)

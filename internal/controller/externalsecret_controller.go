@@ -11,20 +11,14 @@ import (
 	"github.com/hoseinalirezaee/es-refresh-healer/internal/patcher"
 	"github.com/hoseinalirezaee/es-refresh-healer/internal/ratelimit"
 	"github.com/hoseinalirezaee/es-refresh-healer/internal/staleness"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
-	"k8s.io/client-go/kubernetes"
-	corev1typed "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 )
 
@@ -43,14 +37,12 @@ type Controller struct {
 	evaluator staleness.Evaluator
 	limiter   *ratelimit.Limiter
 	cooldown  *ratelimit.Cooldown
-	recorder  record.EventRecorder
 	log       *slog.Logger
 }
 
 func New(
 	cfg config.Config,
 	dynamicClient dynamic.Interface,
-	kubeClient kubernetes.Interface,
 	log *slog.Logger,
 ) (*Controller, error) {
 	gvr := schema.GroupVersionResource{
@@ -62,15 +54,6 @@ func New(
 		Group:   gvr.Group,
 		Version: gvr.Version,
 		Kind:    "ExternalSecret",
-	}
-
-	var recorder record.EventRecorder
-	if cfg.EmitEvents {
-		scheme := runtime.NewScheme()
-		utilruntime.Must(corev1.AddToScheme(scheme))
-		broadcaster := record.NewBroadcaster()
-		broadcaster.StartRecordingToSink(&corev1typed.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
-		recorder = broadcaster.NewRecorder(scheme, corev1.EventSource{Component: controllerName})
 	}
 
 	c := &Controller{
@@ -88,7 +71,6 @@ func New(
 		}),
 		limiter:  ratelimit.New(cfg.MaxPatchesPerMinute),
 		cooldown: ratelimit.NewCooldown(cfg.Cooldown),
-		recorder: recorder,
 		log:      log.With("controller", controllerName),
 	}
 
@@ -248,7 +230,6 @@ func (c *Controller) Handle(ctx context.Context, obj *unstructured.Unstructured,
 
 	metrics.ExternalSecretsStaleTotal.WithLabelValues(evaluation.Reason).Inc()
 	c.log.Info("stale ExternalSecret detected", attrs...)
-	c.emitEvent(obj, corev1.EventTypeWarning, "StaleExternalSecretDetected", "refresh lag %s exceeded threshold %s", evaluation.Lag, evaluation.Threshold)
 
 	key := fmt.Sprintf("%s/%s", info.Namespace, info.Name)
 	if allowed, elapsed := staleness.AnnotationCooldownExpired(info.Annotations, now, c.cfg.Cooldown); !allowed {
@@ -282,7 +263,6 @@ func (c *Controller) Handle(ctx context.Context, obj *unstructured.Unstructured,
 
 	c.cooldown.Mark(key, now)
 	metrics.ExternalSecretsPatchedTotal.WithLabelValues(metrics.BoolLabel(false)).Inc()
-	c.emitEvent(obj, corev1.EventTypeNormal, "ExternalSecretKickPatched", "patched %s annotation", patcher.LastKickAnnotation)
 	c.log.Info("patched ExternalSecret kick annotation", "namespace", info.Namespace, "name", info.Name)
 	return nil
 }
@@ -307,23 +287,4 @@ func (c *Controller) namespaceAllowed(namespace string) bool {
 		}
 	}
 	return true
-}
-
-func (c *Controller) emitEvent(obj *unstructured.Unstructured, eventType, reason, message string, args ...any) {
-	if c.recorder == nil {
-		return
-	}
-	c.recorder.Eventf(
-		&corev1.ObjectReference{
-			APIVersion: c.gvk.GroupVersion().String(),
-			Kind:       c.gvk.Kind,
-			Namespace:  obj.GetNamespace(),
-			Name:       obj.GetName(),
-			UID:        obj.GetUID(),
-		},
-		eventType,
-		reason,
-		message,
-		args...,
-	)
 }

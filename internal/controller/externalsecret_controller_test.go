@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
-	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
 func TestHandlePatchesStaleExternalSecret(t *testing.T) {
@@ -97,7 +96,7 @@ func testController(t *testing.T, dryRun bool, objects ...runtime.Object) (*Cont
 		MetricsAddr:            ":0",
 		LeaderElect:            false,
 		ExternalSecretVersion:  "v1",
-	}, dynamicClient, kubefake.NewSimpleClientset(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	}, dynamicClient, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
 		t.Fatalf("new controller: %v", err)
 	}

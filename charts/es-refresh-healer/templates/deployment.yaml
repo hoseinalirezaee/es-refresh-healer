@@ -61,8 +61,6 @@ spec:
               value: {{ .Values.controller.leaderElect | quote }}
             - name: EXTERNALSECRET_VERSION
               value: {{ .Values.controller.externalSecretVersion | quote }}
-            - name: EMIT_EVENTS
-              value: {{ .Values.controller.emitEvents | quote }}
             - name: ALLOW_ZERO_REFRESH_INTERVAL
               value: {{ .Values.controller.allowZeroRefreshInterval | quote }}
             - name: MAX_ALLOWED_LAG_SECONDS
