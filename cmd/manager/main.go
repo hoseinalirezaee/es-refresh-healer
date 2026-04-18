@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -19,11 +17,8 @@ import (
 	"github.com/hoseinalirezaee/es-refresh-healer/internal/controller"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/util/homedir"
 )
 
@@ -51,11 +46,6 @@ func main() {
 		log.Error("failed to create dynamic Kubernetes client", "error", err)
 		os.Exit(1)
 	}
-	kubeClient, err := kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		log.Error("failed to create Kubernetes client", "error", err)
-		os.Exit(1)
-	}
 
 	ctrl, err := controller.New(cfg, dynamicClient, log)
 	if err != nil {
@@ -63,62 +53,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if !cfg.LeaderElect {
-		log.Info("starting without leader election")
-		if err := ctrl.Run(ctx, 2); err != nil && !errors.Is(err, context.Canceled) {
-			log.Error("controller stopped", "error", err)
-			os.Exit(1)
-		}
-		return
-	}
-
-	runWithLeaderElection(ctx, cfg, kubeClient, ctrl, log)
-}
-
-func runWithLeaderElection(
-	ctx context.Context,
-	cfg config.Config,
-	kubeClient kubernetes.Interface,
-	ctrl *controller.Controller,
-	log *slog.Logger,
-) {
-	identity := leaderIdentity()
-	lock, err := resourcelock.New(
-		resourcelock.LeasesResourceLock,
-		cfg.LeaderElectionNamespace,
-		"es-refresh-healer",
-		kubeClient.CoreV1(),
-		kubeClient.CoordinationV1(),
-		resourcelock.ResourceLockConfig{Identity: identity},
-	)
-	if err != nil {
-		log.Error("failed to create leader election lock", "error", err)
+	log.Info("starting controller")
+	if err := ctrl.Run(ctx, 2); err != nil && !errors.Is(err, context.Canceled) {
+		log.Error("controller stopped", "error", err)
 		os.Exit(1)
 	}
-
-	leaderelection.RunOrDie(ctx, leaderelection.LeaderElectionConfig{
-		Lock:            lock,
-		ReleaseOnCancel: true,
-		LeaseDuration:   15 * time.Second,
-		RenewDeadline:   10 * time.Second,
-		RetryPeriod:     2 * time.Second,
-		Callbacks: leaderelection.LeaderCallbacks{
-			OnStartedLeading: func(ctx context.Context) {
-				log.Info("leader acquired", "identity", identity)
-				if err := ctrl.Run(ctx, 2); err != nil && !errors.Is(err, context.Canceled) {
-					log.Error("controller stopped", "error", err)
-				}
-			},
-			OnStoppedLeading: func() {
-				log.Error("leader election lost", "identity", identity)
-			},
-			OnNewLeader: func(current string) {
-				if current != identity {
-					log.Info("new leader observed", "identity", current)
-				}
-			},
-		},
-	})
 }
 
 func serveMetrics(ctx context.Context, addr string, log *slog.Logger) {
@@ -172,19 +111,6 @@ func buildKubernetesConfig(kubeconfig string) (*rest.Config, error) {
 		return nil, err
 	}
 	return clientcmd.BuildConfigFromFlags("", local)
-}
-
-func leaderIdentity() string {
-	host, err := os.Hostname()
-	if err != nil || host == "" {
-		host = "unknown"
-	}
-
-	random := make([]byte, 4)
-	if _, err := rand.Read(random); err != nil {
-		return host
-	}
-	return host + "-" + hex.EncodeToString(random)
 }
 
 func newLogger(level string) *slog.Logger {

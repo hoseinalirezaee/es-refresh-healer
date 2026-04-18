@@ -21,8 +21,6 @@ type Config struct {
 	DenyNamespaces           []string
 	LogLevel                 string
 	MetricsAddr              string
-	LeaderElect              bool
-	LeaderElectionNamespace  string
 	Kubeconfig               string
 	ExternalSecretVersion    string
 	AllowZeroRefreshInterval bool
@@ -42,8 +40,6 @@ func Parse(args []string) (Config, error) {
 		DenyNamespaces:           listEnv("DENY_NAMESPACES"),
 		LogLevel:                 stringEnv("LOG_LEVEL", "info"),
 		MetricsAddr:              stringEnv("METRICS_ADDR", ":8080"),
-		LeaderElect:              boolEnv("LEADER_ELECT", true),
-		LeaderElectionNamespace:  stringEnv("LEADER_ELECTION_NAMESPACE", stringEnv("POD_NAMESPACE", "default")),
 		Kubeconfig:               stringEnv("KUBECONFIG", ""),
 		ExternalSecretVersion:    stringEnv("EXTERNALSECRET_VERSION", "v1"),
 		AllowZeroRefreshInterval: boolEnv("ALLOW_ZERO_REFRESH_INTERVAL", false),
@@ -68,8 +64,6 @@ func Parse(args []string) (Config, error) {
 	})
 	fs.StringVar(&cfg.LogLevel, "log-level", cfg.LogLevel, "log level: debug, info, warn, error")
 	fs.StringVar(&cfg.MetricsAddr, "metrics-addr", cfg.MetricsAddr, "metrics HTTP listen address")
-	fs.BoolVar(&cfg.LeaderElect, "leader-elect", cfg.LeaderElect, "use Kubernetes Lease leader election")
-	fs.StringVar(&cfg.LeaderElectionNamespace, "leader-election-namespace", cfg.LeaderElectionNamespace, "namespace for the leader election Lease")
 	fs.StringVar(&cfg.Kubeconfig, "kubeconfig", cfg.Kubeconfig, "path to kubeconfig for out-of-cluster execution")
 	fs.StringVar(&cfg.ExternalSecretVersion, "externalsecret-version", cfg.ExternalSecretVersion, "ExternalSecret API version")
 	fs.BoolVar(&cfg.AllowZeroRefreshInterval, "allow-zero-refresh-interval", cfg.AllowZeroRefreshInterval, "evaluate resources with non-positive refresh intervals using the fallback interval")

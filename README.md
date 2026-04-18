@@ -116,7 +116,6 @@ helm upgrade es-refresh-healer ./charts/es-refresh-healer \
 | `controller.denyNamespaces` | `--deny-namespaces` | none |
 | `controller.logLevel` | `--log-level` | `info` |
 | `controller.metricsAddr` | `--metrics-addr` | `:8080` |
-| `controller.leaderElect` | `--leader-elect` | `true` |
 | `controller.externalSecretVersion` | `--externalsecret-version` | `v1` |
 | `controller.allowZeroRefreshInterval` | `--allow-zero-refresh-interval` | `false` |
 | `controller.maxAllowedLagSeconds` | `--max-allowed-lag-seconds` | `0` |
@@ -172,8 +171,6 @@ GitHub Actions runs the E2E workflow against the latest four kind-backed Kuberne
 If no resources are seen, confirm the ESO API version. The default is `external-secrets.io/v1`; set `controller.externalSecretVersion` if your cluster uses another served version such as legacy `v1beta1`.
 
 If stale resources are detected but not patched, check dry-run mode, cooldown, and `maxPatchesPerMinute`.
-
-If leader election fails, confirm the service account can manage `leases.coordination.k8s.io` in the release namespace.
 
 If ServiceMonitor is enabled but metrics are not scraped, confirm the Prometheus Operator is installed and its selector matches `metrics.serviceMonitor.labels`.
 

@@ -26,7 +26,6 @@ controller:
   denyNamespaces: []
   logLevel: info
   metricsAddr: :8080
-  leaderElect: true
   externalSecretVersion: v1
   allowZeroRefreshInterval: false
   maxAllowedLagSeconds: 0

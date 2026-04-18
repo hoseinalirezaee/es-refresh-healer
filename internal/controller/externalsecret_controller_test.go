@@ -94,7 +94,6 @@ func testController(t *testing.T, dryRun bool, objects ...runtime.Object) (*Cont
 		DryRun:                 dryRun,
 		LogLevel:               "debug",
 		MetricsAddr:            ":0",
-		LeaderElect:            false,
 		ExternalSecretVersion:  "v1",
 	}, dynamicClient, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if err != nil {
