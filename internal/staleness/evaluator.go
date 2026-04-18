@@ -34,6 +34,7 @@ type Evaluation struct {
 	Lag                time.Duration
 	EffectiveInterval  time.Duration
 	Threshold          time.Duration
+	RecheckAfter       time.Duration
 	MissingRefreshTime bool
 }
 
@@ -75,7 +76,7 @@ func (e Evaluator) Evaluate(info ExternalSecretInfo, now time.Time) Evaluation {
 
 	if info.RefreshTime == nil {
 		lag := now.Sub(info.CreationTime)
-		stale := lag > threshold
+		stale := lag >= threshold
 		reason := "bootstrap_grace"
 		if stale {
 			reason = "missing_refresh_time"
@@ -86,12 +87,13 @@ func (e Evaluator) Evaluate(info ExternalSecretInfo, now time.Time) Evaluation {
 			Lag:                lag,
 			EffectiveInterval:  interval,
 			Threshold:          threshold,
+			RecheckAfter:       recheckAfter(threshold, lag),
 			MissingRefreshTime: true,
 		}
 	}
 
 	lag := now.Sub(*info.RefreshTime)
-	stale := lag > threshold
+	stale := lag >= threshold
 	reason := "fresh"
 	if stale {
 		reason = "stale_refresh_time"
@@ -103,7 +105,16 @@ func (e Evaluator) Evaluate(info ExternalSecretInfo, now time.Time) Evaluation {
 		Lag:               lag,
 		EffectiveInterval: interval,
 		Threshold:         threshold,
+		RecheckAfter:      recheckAfter(threshold, lag),
 	}
+}
+
+func recheckAfter(threshold, lag time.Duration) time.Duration {
+	remaining := threshold - lag
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
 }
 
 func FromUnstructured(obj *unstructured.Unstructured, defaultInterval time.Duration) (ExternalSecretInfo, error) {

@@ -17,9 +17,15 @@ func TestCooldown(t *testing.T) {
 	if cooldown.Allow("apps/demo", now.Add(9*time.Minute)) {
 		t.Fatalf("expected cooldown to block repeated attempt")
 	}
+	if remaining := cooldown.Remaining("apps/demo", now.Add(9*time.Minute)); remaining != time.Minute {
+		t.Fatalf("expected 1m cooldown remaining, got %s", remaining)
+	}
 
 	if !cooldown.Allow("apps/demo", now.Add(10*time.Minute)) {
 		t.Fatalf("expected cooldown to expire")
+	}
+	if remaining := cooldown.Remaining("apps/demo", now.Add(10*time.Minute)); remaining != 0 {
+		t.Fatalf("expected expired cooldown remaining to be 0, got %s", remaining)
 	}
 }
 

@@ -49,6 +49,28 @@ func TestHandleLeavesFreshExternalSecretUntouched(t *testing.T) {
 	}
 }
 
+func TestHandleSchedulesFreshExternalSecretForStaleDeadline(t *testing.T) {
+	obj := testExternalSecret("apps", "scheduled", time.Now(), nil)
+	if err := unstructured.SetNestedField(obj.Object, "40ms", "spec", "refreshInterval"); err != nil {
+		t.Fatalf("set refreshInterval: %v", err)
+	}
+	ctrl, dynamicClient := testController(t, false, obj)
+	defer ctrl.queue.ShutDown()
+
+	if err := ctrl.Handle(context.Background(), obj, "test"); err != nil {
+		t.Fatalf("handle fresh ExternalSecret: %v", err)
+	}
+
+	got := getExternalSecret(t, dynamicClient, "apps", "scheduled")
+	if got.GetAnnotations()[patcher.LastKickAnnotation] != "" {
+		t.Fatalf("fresh ExternalSecret should not be patched")
+	}
+
+	if key := waitForQueueKey(t, ctrl, time.Second); key != "apps/scheduled" {
+		t.Fatalf("expected scheduled recheck for apps/scheduled, got %q", key)
+	}
+}
+
 func TestHandleDryRunDoesNotPatch(t *testing.T) {
 	obj := testExternalSecret("apps", "dry-run", time.Now().Add(-5*time.Minute), nil)
 	ctrl, dynamicClient := testController(t, true, obj)
@@ -136,4 +158,29 @@ func getExternalSecret(t *testing.T, client *dynamicfake.FakeDynamicClient, name
 		t.Fatalf("get ExternalSecret: %v", err)
 	}
 	return got
+}
+
+func waitForQueueKey(t *testing.T, ctrl *Controller, timeout time.Duration) string {
+	t.Helper()
+
+	keys := make(chan string, 1)
+	go func() {
+		item, shutdown := ctrl.queue.Get()
+		if shutdown {
+			return
+		}
+		defer ctrl.queue.Done(item)
+
+		key, _ := item.(string)
+		keys <- key
+	}()
+
+	select {
+	case key := <-keys:
+		return key
+	case <-time.After(timeout):
+		ctrl.queue.ShutDown()
+		t.Fatalf("timed out waiting for delayed queue item")
+		return ""
+	}
 }

@@ -61,6 +61,26 @@ func (c *Cooldown) Allow(key string, now time.Time) bool {
 	return now.Sub(last) >= c.duration
 }
 
+func (c *Cooldown) Remaining(key string, now time.Time) time.Duration {
+	if c == nil || c.duration <= 0 {
+		return 0
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	last, ok := c.last[key]
+	if !ok {
+		return 0
+	}
+
+	remaining := c.duration - now.Sub(last)
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
+}
+
 func (c *Cooldown) Mark(key string, now time.Time) {
 	if c == nil || c.duration <= 0 {
 		return

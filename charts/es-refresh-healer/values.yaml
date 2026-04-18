@@ -28,7 +28,7 @@ serviceAccount:
 
 # Controller runtime configuration.
 controller:
-  # Interval between full cluster scans of ExternalSecret resources.
+  # Safety-net interval between full cluster scans; fresh resources also get per-object delayed rechecks.
   scanInterval: 60s
   # Fallback refresh interval when spec.refreshInterval is missing.
   defaultRefreshInterval: 1h

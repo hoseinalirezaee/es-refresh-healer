@@ -58,6 +58,34 @@ func TestEvaluatorKeepsFreshResourceUntouched(t *testing.T) {
 	if result.Reason != "fresh" {
 		t.Fatalf("expected fresh reason, got %q", result.Reason)
 	}
+	if result.RecheckAfter != 90*time.Second {
+		t.Fatalf("expected recheck after 90s, got %s", result.RecheckAfter)
+	}
+}
+
+func TestEvaluatorTreatsThresholdAsStale(t *testing.T) {
+	now := time.Date(2026, 4, 18, 12, 0, 0, 0, time.UTC)
+	interval := time.Minute
+	refreshTime := now.Add(-3*time.Minute - 30*time.Second)
+
+	evaluator := NewEvaluator(Config{
+		DefaultRefreshInterval: time.Hour,
+		StaleMultiplier:        3,
+		GracePeriod:            30 * time.Second,
+	})
+
+	result := evaluator.Evaluate(ExternalSecretInfo{
+		RefreshInterval: &interval,
+		RefreshTime:     &refreshTime,
+		CreationTime:    now.Add(-10 * time.Minute),
+	}, now)
+
+	if !result.Stale {
+		t.Fatalf("expected resource to be stale at threshold")
+	}
+	if result.RecheckAfter != 0 {
+		t.Fatalf("expected no delayed recheck for stale resource, got %s", result.RecheckAfter)
+	}
 }
 
 func TestEvaluatorUsesBootstrapGraceForMissingRefreshTime(t *testing.T) {

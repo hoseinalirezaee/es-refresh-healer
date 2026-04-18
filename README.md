@@ -24,8 +24,10 @@ That patch is enough to enqueue ESO reconciliation without taking ownership of t
 The controller watches `ExternalSecret` resources and also performs a full scan on a ticker, defaulting to every `60s`. A resource is considered stale when:
 
 ```text
-now - status.refreshTime > spec.refreshInterval * staleMultiplier + graceSeconds
+now - status.refreshTime >= spec.refreshInterval * staleMultiplier + graceSeconds
 ```
+
+For fresh resources, the controller schedules a delayed recheck for the exact stale threshold, so an observed `ExternalSecret` does not have to wait for the next full scan before it is evaluated again. The periodic scan remains a safety net for missed watch events, startup discovery, and unexpected queue loss.
 
 If `spec.refreshInterval` is missing, the controller uses `defaultRefreshInterval`. If `status.refreshTime` is missing, the resource gets the same bootstrap grace window before being considered stale. Non-positive refresh intervals are skipped by default.
 

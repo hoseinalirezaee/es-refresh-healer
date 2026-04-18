@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/hoseinalirezaee/es-refresh-healer/internal/config"
@@ -37,6 +38,8 @@ type Controller struct {
 	evaluator staleness.Evaluator
 	limiter   *ratelimit.Limiter
 	cooldown  *ratelimit.Cooldown
+	recheckMu sync.Mutex
+	rechecks  map[string]time.Time
 	log       *slog.Logger
 }
 
@@ -71,6 +74,7 @@ func New(
 		}),
 		limiter:  ratelimit.New(cfg.MaxPatchesPerMinute),
 		cooldown: ratelimit.NewCooldown(cfg.Cooldown),
+		rechecks: map[string]time.Time{},
 		log:      log.With("controller", controllerName),
 	}
 
@@ -161,6 +165,7 @@ func (c *Controller) processNextItem(ctx context.Context) bool {
 		c.queue.Forget(item)
 		return true
 	}
+	c.clearDueRecheck(key, time.Now())
 
 	if err := c.reconcile(ctx, key); err != nil {
 		c.log.Warn("reconcile failed", "key", key, "error", err)
@@ -204,6 +209,7 @@ func (c *Controller) Handle(ctx context.Context, obj *unstructured.Unstructured,
 		c.log.Warn("failed to evaluate ExternalSecret", "namespace", obj.GetNamespace(), "name", obj.GetName(), "error", err)
 		return nil
 	}
+	key := fmt.Sprintf("%s/%s", info.Namespace, info.Name)
 
 	evaluation := c.evaluator.Evaluate(info, now)
 	metrics.ObserveLag(evaluation.Lag)
@@ -215,6 +221,7 @@ func (c *Controller) Handle(ctx context.Context, obj *unstructured.Unstructured,
 		"lag", evaluation.Lag.String(),
 		"interval", evaluation.EffectiveInterval.String(),
 		"threshold", evaluation.Threshold.String(),
+		"recheckAfter", evaluation.RecheckAfter.String(),
 		"stale", evaluation.Stale,
 		"reason", evaluation.Reason,
 	}
@@ -224,6 +231,7 @@ func (c *Controller) Handle(ctx context.Context, obj *unstructured.Unstructured,
 		return nil
 	}
 	if !evaluation.Stale {
+		c.scheduleRecheck(key, evaluation.RecheckAfter, "fresh", attrs...)
 		c.log.Debug("ExternalSecret is fresh", attrs...)
 		return nil
 	}
@@ -231,19 +239,21 @@ func (c *Controller) Handle(ctx context.Context, obj *unstructured.Unstructured,
 	metrics.ExternalSecretsStaleTotal.WithLabelValues(evaluation.Reason).Inc()
 	c.log.Info("stale ExternalSecret detected", attrs...)
 
-	key := fmt.Sprintf("%s/%s", info.Namespace, info.Name)
 	if allowed, elapsed := staleness.AnnotationCooldownExpired(info.Annotations, now, c.cfg.Cooldown); !allowed {
 		metrics.ExternalSecretCooldownSkippedTotal.Inc()
+		c.scheduleRecheck(key, c.cfg.Cooldown-elapsed, "annotation_cooldown", attrs...)
 		c.log.Debug("cooldown annotation still active", "namespace", info.Namespace, "name", info.Name, "elapsed", elapsed.String(), "cooldown", c.cfg.Cooldown.String())
 		return nil
 	}
 	if !c.cooldown.Allow(key, now) {
 		metrics.ExternalSecretCooldownSkippedTotal.Inc()
+		c.scheduleRecheck(key, c.cooldown.Remaining(key, now), "memory_cooldown", attrs...)
 		c.log.Debug("in-memory cooldown still active", "namespace", info.Namespace, "name", info.Name, "cooldown", c.cfg.Cooldown.String())
 		return nil
 	}
 	if !c.limiter.Allow() {
 		metrics.ExternalSecretRateLimitedTotal.Inc()
+		c.scheduleRecheck(key, c.rateLimitRetryDelay(), "rate_limited", attrs...)
 		c.log.Warn("global patch rate limit reached", "namespace", info.Namespace, "name", info.Name, "maxPatchesPerMinute", c.cfg.MaxPatchesPerMinute)
 		return nil
 	}
@@ -251,6 +261,7 @@ func (c *Controller) Handle(ctx context.Context, obj *unstructured.Unstructured,
 	if c.cfg.DryRun {
 		metrics.ExternalSecretsPatchedTotal.WithLabelValues(metrics.BoolLabel(true)).Inc()
 		c.cooldown.Mark(key, now)
+		c.scheduleRecheck(key, c.cfg.Cooldown, "dry_run_cooldown", attrs...)
 		c.log.Info("dry-run would patch ExternalSecret", "namespace", info.Namespace, "name", info.Name)
 		return nil
 	}
@@ -262,9 +273,53 @@ func (c *Controller) Handle(ctx context.Context, obj *unstructured.Unstructured,
 	}
 
 	c.cooldown.Mark(key, now)
+	c.scheduleRecheck(key, c.cfg.Cooldown, "patch_cooldown", attrs...)
 	metrics.ExternalSecretsPatchedTotal.WithLabelValues(metrics.BoolLabel(false)).Inc()
 	c.log.Info("patched ExternalSecret kick annotation", "namespace", info.Namespace, "name", info.Name)
 	return nil
+}
+
+func (c *Controller) rateLimitRetryDelay() time.Duration {
+	if c.cfg.MaxPatchesPerMinute <= 0 {
+		return 0
+	}
+
+	delay := time.Minute / time.Duration(c.cfg.MaxPatchesPerMinute)
+	if delay < time.Second {
+		return time.Second
+	}
+	return delay
+}
+
+func (c *Controller) scheduleRecheck(key string, delay time.Duration, reason string, attrs ...any) {
+	if delay <= 0 {
+		return
+	}
+
+	now := time.Now()
+	deadline := now.Add(delay)
+
+	c.recheckMu.Lock()
+	existing, exists := c.rechecks[key]
+	if exists && !deadline.Before(existing) {
+		c.recheckMu.Unlock()
+		return
+	}
+	c.rechecks[key] = deadline
+	c.recheckMu.Unlock()
+
+	c.queue.AddAfter(key, delay)
+	c.log.Debug("scheduled ExternalSecret recheck", append(attrs, "key", key, "delay", delay.String(), "deadline", deadline.Format(time.RFC3339Nano), "scheduleReason", reason)...)
+}
+
+func (c *Controller) clearDueRecheck(key string, now time.Time) {
+	c.recheckMu.Lock()
+	defer c.recheckMu.Unlock()
+
+	deadline, exists := c.rechecks[key]
+	if exists && !deadline.After(now) {
+		delete(c.rechecks, key)
+	}
 }
 
 func (c *Controller) namespaceAllowed(namespace string) bool {
