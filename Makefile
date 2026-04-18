@@ -27,5 +27,9 @@ helm-template:
 docker-build:
 	docker build -t $(IMAGE):$(SHORT_SHA) .
 
+.PHONY: e2e-kind
+e2e-kind:
+	bash scripts/e2e-kind.sh
+
 .PHONY: verify
 verify: fmt test helm-lint helm-template docker-build

@@ -152,6 +152,14 @@ Or use:
 make verify
 ```
 
+Run the kind-based E2E test against the current Kubernetes context:
+
+```bash
+make e2e-kind
+```
+
+GitHub Actions runs the E2E workflow against the latest four kind-backed Kubernetes cluster versions: `v1.35.1`, `v1.34.3`, `v1.33.4`, and `v1.32.8`.
+
 ## Operational Runbook
 
 1. Deploy with `controller.dryRun=true` for 24-72 hours.
