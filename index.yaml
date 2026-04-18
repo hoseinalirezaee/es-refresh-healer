@@ -2,13 +2,13 @@ apiVersion: v1
 entries:
   es-refresh-healer:
   - apiVersion: v2
-    appVersion: aebc1a8
-    created: "2026-04-18T14:28:20.481956777Z"
+    appVersion: f26d18f
+    created: "2026-04-18T14:31:04.211638539Z"
     description: Detects stale ExternalSecret resources and nudges ESO reconciliation.
-    digest: 9266112fbb912572dee4a89ac4523bd0670f8700432ab2078e2b98c96e9760a1
+    digest: d395fa283a2bf5952f0e2c52c5e6c83803d9e3430744a658c2dd3ae8762540a5
     name: es-refresh-healer
     type: application
     urls:
-    - https://hoseinalirezaee.github.io/es-refresh-healer/es-refresh-healer-0.0.0-aebc1a8.tgz
-    version: 0.0.0-aebc1a8
-generated: "2026-04-18T14:28:20.481375856Z"
+    - https://hoseinalirezaee.github.io/es-refresh-healer/es-refresh-healer-0.0.0-f26d18f.tgz
+    version: 0.0.0-f26d18f
+generated: "2026-04-18T14:31:04.211160256Z"
