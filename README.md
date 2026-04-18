@@ -155,7 +155,7 @@ Run the kind-based E2E test against the current Kubernetes context:
 make e2e-kind
 ```
 
-GitHub Actions runs the E2E workflow against the latest four kind-backed Kubernetes cluster versions: `v1.35.1`, `v1.34.3`, `v1.33.4`, and `v1.32.8`. The test applies the real External Secrets Operator CRD bundle from `external-secrets/external-secrets` and creates `external-secrets.io/v1` `ExternalSecret` resources.
+GitHub Actions runs the E2E workflow after the short-SHA image and chart are published. It tests the latest four kind-backed Kubernetes cluster versions: `v1.35.1`, `v1.34.3`, `v1.33.4`, and `v1.32.8`. The test installs the controller from the Helm repository, pulls the published GHCR image, applies the real External Secrets Operator CRD bundle from `external-secrets/external-secrets`, and creates `external-secrets.io/v1` `ExternalSecret` resources.
 
 ## Operational Runbook
 
