@@ -1,69 +1,128 @@
+# Number of controller pods to run. Keep this at 1 because this chart does not enable leader election.
 replicaCount: 1
 
+# Container image settings for the controller.
 image:
+  # Image repository that contains the es-refresh-healer controller.
   repository: ghcr.io/hoseinalirezaee/es-refresh-healer
+  # Image tag to deploy. Packaged charts set this to the short Git SHA; empty uses Chart.appVersion.
   tag: ""
+  # Kubernetes image pull policy for the controller container.
   pullPolicy: IfNotPresent
 
+# Optional image pull secrets for private registries.
 imagePullSecrets: []
+# Override the chart name used in generated Kubernetes object names.
 nameOverride: ""
+# Override the full release name used in generated Kubernetes object names.
 fullnameOverride: ""
 
+# ServiceAccount settings for the controller pod.
 serviceAccount:
+  # Create a dedicated ServiceAccount for the controller.
   create: true
+  # Extra annotations to add to the ServiceAccount.
   annotations: {}
+  # Existing ServiceAccount name to use when create is false; empty uses the generated name.
   name: ""
 
+# Controller runtime configuration.
 controller:
+  # Interval between full cluster scans of ExternalSecret resources.
   scanInterval: 60s
+  # Fallback refresh interval when spec.refreshInterval is missing.
   defaultRefreshInterval: 1h
+  # Multiplier applied to the effective refresh interval before a resource is considered stale.
   staleMultiplier: 3
+  # Extra grace period, in seconds or Go duration format, added to the stale threshold.
   graceSeconds: 30
+  # Minimum cooldown, in seconds or Go duration format, before the same ExternalSecret can be patched again.
   cooldownSeconds: 600
+  # Global maximum number of annotation patches per minute; values <=0 disable the limiter.
   maxPatchesPerMinute: 20
+  # Log stale decisions without patching ExternalSecret annotations.
   dryRun: false
+  # Namespace allowlist for ExternalSecret processing; empty means all namespaces.
   watchNamespaces: []
+  # Namespace denylist for ExternalSecret processing.
   denyNamespaces: []
+  # Structured log level. Valid values are debug, info, warn, and error.
   logLevel: info
+  # HTTP listen address for /metrics and /healthz. Empty disables the metrics server.
   metricsAddr: :8080
+  # Served ExternalSecret API version to watch, such as v1 or v1beta1.
   externalSecretVersion: v1
+  # Evaluate resources with non-positive refresh intervals by using defaultRefreshInterval.
   allowZeroRefreshInterval: false
+  # Hard maximum allowed refresh lag in seconds; 0 disables the hard cap.
   maxAllowedLagSeconds: 0
 
+# Metrics exposure settings.
 metrics:
+  # Kubernetes Service settings for the metrics endpoint.
   service:
+    # Create a Service that exposes the metrics port.
     enabled: true
+    # Service and container port used for metrics and health probes.
     port: 8080
+  # Optional Prometheus Operator ServiceMonitor settings.
   serviceMonitor:
+    # Create a ServiceMonitor for Prometheus Operator.
     enabled: false
+    # Prometheus scrape interval for the ServiceMonitor.
     interval: 30s
+    # Prometheus scrape timeout for the ServiceMonitor.
     scrapeTimeout: 10s
+    # Extra labels to add to the ServiceMonitor.
     labels: {}
 
+# Extra annotations to add to the controller pod template.
 podAnnotations: {}
+# Extra labels to add to the controller pod template.
 podLabels: {}
 
+# Pod-level security context for the controller pod.
 podSecurityContext:
+  # Require the pod to run as a non-root user.
   runAsNonRoot: true
+  # User ID used by the controller container.
   runAsUser: 65532
+  # Group ID used by the controller container.
   runAsGroup: 65532
+  # Filesystem group ID applied to mounted volumes.
   fsGroup: 65532
 
+# Container-level security context for the controller container.
 securityContext:
+  # Prevent privilege escalation inside the controller container.
   allowPrivilegeEscalation: false
+  # Mount the controller container root filesystem as read-only.
   readOnlyRootFilesystem: true
+  # Linux capability settings for the controller container.
   capabilities:
+    # Capabilities to drop from the controller container.
     drop:
+      # Drop all Linux capabilities.
       - ALL
 
+# CPU and memory requests and limits for the controller container.
 resources:
+  # Minimum resources requested for scheduling.
   requests:
+    # Requested CPU for the controller container.
     cpu: 25m
+    # Requested memory for the controller container.
     memory: 64Mi
+  # Maximum resources allowed for the controller container.
   limits:
+    # CPU limit for the controller container.
     cpu: 200m
+    # Memory limit for the controller container.
     memory: 128Mi
 
+# Node selector constraints for scheduling the controller pod.
 nodeSelector: {}
+# Tolerations applied to the controller pod.
 tolerations: []
+# Affinity rules applied to the controller pod.
 affinity: {}
